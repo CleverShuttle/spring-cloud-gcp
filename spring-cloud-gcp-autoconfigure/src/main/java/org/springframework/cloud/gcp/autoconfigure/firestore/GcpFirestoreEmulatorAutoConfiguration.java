@@ -17,11 +17,6 @@
 package org.springframework.cloud.gcp.autoconfigure.firestore;
 
 import java.io.IOException;
-import java.net.URI;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 import com.google.api.gax.grpc.InstantiatingGrpcChannelProvider;
 import com.google.auth.Credentials;
@@ -64,6 +59,11 @@ public class GcpFirestoreEmulatorAutoConfiguration {
 	GcpFirestoreEmulatorAutoConfiguration(GcpFirestoreProperties properties) {
 		hostPort = properties.getHostPort();
 		projectId = properties.getProjectId();
+		if (projectId == null) {
+			throw new IllegalArgumentException("Please set property 'spring.cloud.gcp.firestore.projectId' when " +
+											"using the emulator, so that you can see your data in the emulator UI" +
+											".");
+		}
 	}
 
 	@Bean
@@ -71,7 +71,7 @@ public class GcpFirestoreEmulatorAutoConfiguration {
 	public FirestoreOptions firestoreOptions() {
 		return FirestoreOptions.newBuilder()
 				.setCredentials(emulatorCredentials())
-				.setProjectId(projectId)
+				.setProjectId(this.projectId)
 				.setChannelProvider(
 						InstantiatingGrpcChannelProvider.newBuilder()
 								.setEndpoint(this.hostPort)
@@ -81,37 +81,7 @@ public class GcpFirestoreEmulatorAutoConfiguration {
 	}
 
 	private Credentials emulatorCredentials() {
-		final Map<String, List<String>> headerMap = new HashMap<>();
-		headerMap.put("Authorization", Collections.singletonList("Bearer owner"));
-		headerMap.put("google-cloud-resource-prefix", Collections.singletonList(resourcePrefix()));
-
-		return new Credentials() {
-
-			@Override
-			public String getAuthenticationType() {
-				return null;
-			}
-
-			@Override
-			public Map<String, List<String>> getRequestMetadata(URI uri) {
-				return headerMap;
-			}
-
-			@Override
-			public boolean hasRequestMetadata() {
-				return true;
-			}
-
-			@Override
-			public boolean hasRequestMetadataOnly() {
-				return true;
-			}
-
-			@Override
-			public void refresh() {
-				// no-op
-			}
-		};
+		return new GpcFirestoreEmulatorCredentials(resourcePrefix());
 	}
 
 	private String resourcePrefix() {
@@ -141,7 +111,7 @@ public class GcpFirestoreEmulatorAutoConfiguration {
 		@ConditionalOnMissingBean
 		public FirestoreGrpc.FirestoreStub firestoreGrpcStub() throws IOException {
 			ManagedChannel channel = ManagedChannelBuilder
-					.forTarget(hostPort)
+					.forTarget(GcpFirestoreEmulatorAutoConfiguration.this.hostPort)
 					.usePlaintext()
 					.build();
 

@@ -11,8 +11,21 @@
 
     <artifactId>spring-cloud-gcp-autoconfigure</artifactId>
     <name>Spring Cloud GCP Autoconfigure Module</name>
+	<version>1.2.6.CS.RELEASE</version>
 
-    <dependencies>
+	<dependencyManagement>
+		<dependencies>
+			<dependency>
+				<groupId>org.springframework.cloud</groupId>
+				<artifactId>spring-cloud-gcp-dependencies</artifactId>
+				<version>1.2.6.RELEASE</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+		</dependencies>
+	</dependencyManagement>
+
+	<dependencies>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-autoconfigure</artifactId>
@@ -21,6 +34,7 @@
         <dependency>
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-gcp-core</artifactId>
+<!--			<version>1.2.6.RELEASE</version>-->
         </dependency>
 
         <!-- Global -->
@@ -312,4 +326,16 @@
         </dependency>
 
     </dependencies>
+
+	<distributionManagement>
+		<repository>
+			<id>central</id>
+			<url>https://mvn.clever-shuttle.com/artifactory/libs-release-local</url>
+		</repository>
+		<snapshotRepository>
+			<id>snapshots</id>
+			<url>https://mvn.clever-shuttle.com/artifactory/libs-snapshot-local</url>
+		</snapshotRepository>
+	</distributionManagement>
+
 </project>
