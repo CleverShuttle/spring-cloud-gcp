@@ -17,11 +17,6 @@
 package com.google.cloud.spring.autoconfigure.firestore;
 
 import java.io.IOException;
-import java.net.URI;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 import com.google.api.gax.grpc.InstantiatingGrpcChannelProvider;
 import com.google.auth.Credentials;
@@ -56,14 +51,19 @@ import org.springframework.context.annotation.Configuration;
 @EnableConfigurationProperties(GcpFirestoreProperties.class)
 public class GcpFirestoreEmulatorAutoConfiguration {
 
-	private static final String EMULATOR_PROJECT_ID = "unused";
-
-	private static final String ROOT_PATH = "projects/unused/databases/(default)";
+	private static final String ROOT_PATH_FORMAT = "projects/%s/databases/(default)";
 
 	private final String hostPort;
+	private final String projectId;
 
 	GcpFirestoreEmulatorAutoConfiguration(GcpFirestoreProperties properties) {
-		this.hostPort = properties.getHostPort();
+		hostPort = properties.getHostPort();
+		projectId = properties.getProjectId();
+		if (projectId == null) {
+			throw new IllegalArgumentException("Please set property 'spring.cloud.gcp.firestore.projectId' when " +
+											"using the emulator, so that you can see your data in the emulator UI" +
+											".");
+		}
 	}
 
 	@Bean
@@ -71,7 +71,7 @@ public class GcpFirestoreEmulatorAutoConfiguration {
 	public FirestoreOptions firestoreOptions() {
 		return FirestoreOptions.newBuilder()
 				.setCredentials(emulatorCredentials())
-				.setProjectId(EMULATOR_PROJECT_ID)
+				.setProjectId(this.projectId)
 				.setChannelProvider(
 						InstantiatingGrpcChannelProvider.newBuilder()
 								.setEndpoint(this.hostPort)
@@ -81,37 +81,11 @@ public class GcpFirestoreEmulatorAutoConfiguration {
 	}
 
 	private Credentials emulatorCredentials() {
-		final Map<String, List<String>> headerMap = new HashMap<>();
-		headerMap.put("Authorization", Collections.singletonList("Bearer owner"));
-		headerMap.put(
-				"google-cloud-resource-prefix", Collections.singletonList(ROOT_PATH));
+		return new GpcFirestoreEmulatorCredentials(resourcePrefix());
+	}
 
-		return new Credentials() {
-			@Override
-			public String getAuthenticationType() {
-				return null;
-			}
-
-			@Override
-			public Map<String, List<String>> getRequestMetadata(URI uri) {
-				return headerMap;
-			}
-
-			@Override
-			public boolean hasRequestMetadata() {
-				return true;
-			}
-
-			@Override
-			public boolean hasRequestMetadataOnly() {
-				return true;
-			}
-
-			@Override
-			public void refresh() {
-				// no-op
-			}
-		};
+	private String resourcePrefix() {
+		return String.format(ROOT_PATH_FORMAT, projectId);
 	}
 
 	/**
@@ -126,7 +100,7 @@ public class GcpFirestoreEmulatorAutoConfiguration {
 				FirestoreClassMapper classMapper, FirestoreMappingContext firestoreMappingContext) {
 			FirestoreTemplate template = new FirestoreTemplate(
 					firestoreStub,
-					ROOT_PATH + "/documents",
+					resourcePrefix() + "/documents",
 					classMapper,
 					firestoreMappingContext);
 			template.setUsingStreamTokens(false);
